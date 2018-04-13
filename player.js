@@ -157,6 +157,16 @@
               room: ref
             });
           };
+          this$.on({
+            connect: function(){
+              var data;
+              data = {
+                author: requestParams.author,
+                content: requestParams.content
+              };
+              this.emit('author', data);
+            }
+          });
           return this$.on({
             data: function(){
               var ss, ref$, ref1$, editor, user, ref2$, ecell, peerClass, find, cr, cell, origCR, origCell, ref3$, parts, cmdstr, line, refreshCmd, sheetdata, ref4$;
