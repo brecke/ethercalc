@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var J, csvParse, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var J, csvParse, amqp, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, taskExchange, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -13,6 +13,7 @@
     this.include('player');
     J = require('j');
     csvParse = require('csv-parse');
+    amqp = require('amqp');
     DB = this.include('db');
     SC = this.include('sc');
     KEY = this.KEY;
@@ -40,6 +41,23 @@
         return this.response.sendfile(RealBin + "/" + file);
       };
     };
+    taskExchange = (connection = amqp.createConnection({
+      host: '127.0.0.1',
+      port: 5672
+    }), connection.setImplOptions({
+      reconnect: true,
+      reconnectBackoffTime: 1000
+    }), connection.on('ready', function(){
+      var exchangeOptions;
+      exchangeOptions = {
+        type: 'direct',
+        durable: true,
+        autoDelete: false
+      };
+      return connection.exchange('oae-taskexchange', exchangeOptions, function(exchange){
+        return exchange;
+      });
+    }));
     if (this.CORS) {
       console.log("Cross-Origin Resource Sharing (CORS) enabled.");
       this.all('*', function(req, res, next){
@@ -747,7 +765,7 @@
     });
     this.on({
       disconnect: function(){
-        var id, ref$, key, i$, ref1$, len$, client, room, ref2$, val, isConnected, ref3$;
+        var id, ref$, key, i$, ref1$, len$, client, room, ref2$, val, isConnected, author, name, content, data, ref3$;
         console.log("on disconnect");
         id = this.socket.id;
         if (((ref$ = IO.sockets.manager) != null ? ref$.roomClients : void 8) != null) {
@@ -778,12 +796,37 @@
               }
             }
             room = key.substr(4);
+            if (room.indexOf('formdata') < 0) {
+              for (key in IO.sockets.adapter.rooms) {
+                if (/^author-/.exec(key)) {
+                  author = key.slice(7);
+                  for (name in IO.sockets.adapter.rooms) {
+                    if (/^content-/.exec(name)) {
+                      content = name.slice(8);
+                      data = {
+                        contentId: content,
+                        userId: author
+                      };
+                      taskExchange.publish('oae-content/ethercalc-publish', data, null);
+                    }
+                  }
+                }
+              }
+            }
             if ((ref3$ = SC[room]) != null) {
               ref3$.terminate();
             }
             delete SC[room];
           }
         }
+      }
+    });
+    this.on({
+      author: function(){
+        var ref$, author, content;
+        ref$ = this.data, author = ref$.author, content = ref$.content;
+        this.socket.join("author-" + author);
+        this.socket.join("content-" + content);
       }
     });
     return this.on({
@@ -833,7 +876,7 @@
             return;
           }
           DB.multi().rpush("log-" + room, cmdstr).rpush("audit-" + room, cmdstr).bgsave().exec(function(){
-            var commandParameters, room_data, ref$, ref1$;
+            var commandParameters, room_data, ref$, key, author, name, content, data, ref1$;
             commandParameters = cmdstr.split("\r");
             if (SC[room] == null) {
               console.log("SC[" + room + "] went away. Reloading...");
@@ -887,6 +930,22 @@
                     return "set " + (String.fromCharCode(64 + formDataIndex) + (attribs.lastrow + 1)) + " text t " + datavalue;
                   }
                 });
+              }
+            } else {
+              for (key in IO.sockets.adapter.rooms) {
+                if (/^author-/.exec(key)) {
+                  author = key.slice(7);
+                  for (name in IO.sockets.adapter.rooms) {
+                    if (/^content-/.exec(name)) {
+                      content = name.slice(8);
+                      data = {
+                        contentId: content,
+                        userId: author
+                      };
+                      taskExchange.publish('oae-content/ethercalc-edit', data, null);
+                    }
+                  }
+                }
               }
             }
             if ((ref1$ = SC[room]) != null) {

@@ -11,6 +11,7 @@
 
   J = require \j
   csv-parse = require \csv-parse
+  amqp = require \amqp
 
   DB = @include \db
   SC = @include \sc
@@ -40,6 +41,18 @@
   sendFile = (file) -> ->
     @response.type Html
     @response.sendfile "#RealBin/#file"
+
+  taskExchange = do
+    connection = amqp.createConnection(host: '127.0.0.1', port: 5672)
+    connection.setImplOptions(reconnect: true, reconnectBackoffTime: 1000)
+    connection.on 'ready', ->
+      exchangeOptions =
+        type: 'direct'
+        durable: true
+        autoDelete: false
+      connection.exchange 'oae-taskexchange', exchangeOptions, (exchange) ->
+        return exchange
+
 
   if @CORS
     console.log "Cross-Origin Resource Sharing (CORS) enabled."
@@ -465,8 +478,23 @@
       for client, isConnected of val | isConnected and client isnt id
         continue CleanRoom
       room = key.substr(4)
+      if room.indexOf('formdata') < 0
+        for key of IO.sockets.adapter.rooms when key is // ^author- //
+          author = key.slice(7)
+          for name of IO.sockets.adapter.rooms when name is // ^content- //
+            content = name.slice(8)
+            data =
+              contentId: content
+              userId: author
+            taskExchange.publish 'oae-content/ethercalc-publish', data, null
+
       SC[room]?terminate!
       delete SC[room]
+
+  @on author: !->
+    {author, content} = @data
+    @socket.join "author-#author"
+    @socket.join "content-#content"
 
   @on data: !->
     {room, msg, user, ecell, cmdstr, type, auth} = @data
@@ -526,7 +554,17 @@
           .bgsave!.exec!
         SC["#{room_data}"]?ExecuteCommand cmdstrformdata
         broadcast { room:"#{room_data}", user, type, auth, cmdstr: cmdstrformdata, +include_self }
-      # }eddy @on data 
+      # }eddy @on data
+      else
+        for key of IO.sockets.adapter.rooms when key is // ^author- //
+          author = key.slice(7)
+          for name of IO.sockets.adapter.rooms when name is // ^content- //
+            content = name.slice(8)
+            data =
+              contentId: content
+              userId: author
+            taskExchange.publish 'oae-content/ethercalc-edit', data, null
+
       SC[room]?ExecuteCommand cmdstr
       broadcast @data
     | \ask.log
