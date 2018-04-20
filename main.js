@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var J, csvParse, amqp, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, taskExchange, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var J, csvParse, amqp, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, env, rabbitPort, rabbitHost, rabbitExchange, taskExchange, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -41,9 +41,11 @@
         return this.response.sendfile(RealBin + "/" + file);
       };
     };
+    env = process.env;
+    ref$ = [env['RABBIT_PORT'], env['RABBIT_HOST'], env['RABBIT_EXCHANGE']], rabbitPort = ref$[0], rabbitHost = ref$[1], rabbitExchange = ref$[2];
     taskExchange = (connection = amqp.createConnection({
-      host: '127.0.0.1',
-      port: 5672
+      host: rabbitHost,
+      port: rabbitPort
     }), connection.setImplOptions({
       reconnect: true,
       reconnectBackoffTime: 1000
@@ -54,7 +56,7 @@
         durable: true,
         autoDelete: false
       };
-      return connection.exchange('oae-taskexchange', exchangeOptions, function(exchange){
+      return connection.exchange(rabbitExchange, exchangeOptions, function(exchange){
         return exchange;
       });
     }));
@@ -480,6 +482,7 @@
     }), ref$));
     requestToCommand = function(request, cb){
       var command, ref$, cs, this$ = this;
+      console.log("request-to-command");
       if (request.is('application/json')) {
         command = (ref$ = request.body) != null ? ref$.command : void 8;
         if (command) {
@@ -520,6 +523,7 @@
     };
     requestToSave = function(request, cb){
       var snapshot, ref$, cs, this$ = this;
+      console.log("request-to-save");
       if (request.is('application/json')) {
         snapshot = (ref$ = request.body) != null ? ref$.snapshot : void 8;
         if (snapshot) {
@@ -557,6 +561,7 @@
     this.put({
       '/_/:room': function(){
         var room, this$ = this;
+        console.log("put /_/:room");
         this.response.type(Text);
         room = this.params.room;
         return requestToSave(this.request, function(snapshot){
@@ -580,6 +585,7 @@
     this.post({
       '/_/:room': function(){
         var room, this$ = this;
+        console.log("post /_/:room");
         room = this.params.room;
         return requestToCommand(this.request, function(command){
           if (!command) {
@@ -641,6 +647,7 @@
     this.post({
       '/_': function(){
         var this$ = this;
+        console.log("post /_/:room");
         return requestToSave(this.request, function(snapshot){
           var room, ref$;
           room = ((ref$ = this$.body) != null ? ref$.room : void 8) || newRoom();
@@ -736,6 +743,7 @@
       data: function(){
         var ref$, room, msg, user, ecell, cmdstr, type, auth, reply, broadcast, this$ = this;
         ref$ = this.data, room = ref$.room, msg = ref$.msg, user = ref$.user, ecell = ref$.ecell, cmdstr = ref$.cmdstr, type = ref$.type, auth = ref$.auth;
+        console.log("on data: ", (import$({}, this.data)));
         room = (room + "").replace(/^_+/, '');
         if (EXPIRE) {
           DB.expire("snapshot-" + room, EXPIRE);

@@ -42,15 +42,18 @@
     @response.type Html
     @response.sendfile "#RealBin/#file"
 
+  env = process.env
+  [rabbitPort, rabbitHost, rabbitExchange] = env<[ RABBIT_PORT RABBIT_HOST RABBIT_EXCHANGE ]>
+
   taskExchange = do
-    connection = amqp.createConnection(host: '127.0.0.1', port: 5672)
+    connection = amqp.createConnection(host: rabbitHost, port: rabbitPort)
     connection.setImplOptions(reconnect: true, reconnectBackoffTime: 1000)
     connection.on 'ready', ->
       exchangeOptions =
         type: 'direct'
         durable: true
         autoDelete: false
-      connection.exchange 'oae-taskexchange', exchangeOptions, (exchange) ->
+      connection.exchange rabbitExchange, exchangeOptions, (exchange) ->
         return exchange
 
 
@@ -330,7 +333,7 @@
   @get "#BASEPATH/_/:room": api -> [Text, it]
 
   request-to-command = (request, cb) ->
-    #console.log "request-to-command"
+    console.log "request-to-command"
     if request.is \application/json
       command = request.body?command
       return cb command if command
@@ -349,7 +352,7 @@
       return cb "loadclipboard #save"
 
   request-to-save = (request, cb) ->
-    #console.log "request-to-save"
+    console.log "request-to-save"
     if request.is \application/json
       snapshot = request.body?snapshot
       return cb snapshot if snapshot
@@ -398,7 +401,7 @@
     @response.send 201 \OK
 
   @put '/_/:room': ->
-    #console.log "put /_/:room"
+    console.log "put /_/:room"
     @response.type Text
     {room} = @params
     snapshot <~ request-to-save @request
@@ -410,7 +413,7 @@
     @response.send 201 \OK
 
   @post '/_/:room': ->
-    #console.log "post /_/:room"
+    console.log "post /_/:room"
     {room} = @params
     command <~ request-to-command @request
     unless command
@@ -450,7 +453,7 @@
     @response.json 202 {command}
 
   @post '/_': ->
-    #console.log "post /_/:room"
+    console.log "post /_/:room"
     snapshot <~ request-to-save @request
     room = @body?room || new-room!
     <~ SC._put room, snapshot
