@@ -330,7 +330,6 @@
   @get '/_/:room': api -> [Text, it]
 
   request-to-command = (request, cb) ->
-    console.log "request-to-command"
     if request.is \application/json
       command = request.body?command
       return cb command if command
@@ -349,7 +348,6 @@
       return cb "loadclipboard #save"
 
   request-to-save = (request, cb) ->
-    console.log "request-to-save"
     if request.is \application/json
       snapshot = request.body?snapshot
       return cb snapshot if snapshot
@@ -397,7 +395,6 @@
     @response.send 201 \OK
 
   @put '/_/:room': ->
-    console.log "put /_/:room"
     @response.type Text
     {room} = @params
     snapshot <~ request-to-save @request
@@ -409,7 +406,6 @@
     @response.send 201 \OK
 
   @post '/_/:room': ->
-    console.log "post /_/:room"
     {room} = @params
     command <~ request-to-command @request
     unless command
@@ -449,7 +445,6 @@
     @response.json 202 {command}
 
   @post '/_': ->
-    console.log "post /_/:room"
     snapshot <~ request-to-save @request
     room = @body?room || new-room!
     <~ SC._put room, snapshot
@@ -466,7 +461,6 @@
     @response.send 201 \OK
 
   @on disconnect: !->
-    console.log "on disconnect"
     { id } = @socket
     if IO.sockets.manager?roomClients?
       # socket.io 0.9.x
@@ -502,7 +496,6 @@
   @on data: !->
     {room, msg, user, ecell, cmdstr, type, auth} = @data
     # eddy
-    #console.log "on data: " {...@data} 
     room = "#room" - /^_+/ # preceding underscore is reserved
     DB.expire "snapshot-#room", EXPIRE if EXPIRE
     reply = (data) ~> @emit {data}

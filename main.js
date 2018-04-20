@@ -579,7 +579,6 @@
     });
     requestToCommand = function(request, cb){
       var command, ref$, cs, this$ = this;
-      console.log("request-to-command");
       if (request.is('application/json')) {
         command = (ref$ = request.body) != null ? ref$.command : void 8;
         if (command) {
@@ -620,7 +619,6 @@
     };
     requestToSave = function(request, cb){
       var snapshot, ref$, cs, this$ = this;
-      console.log("request-to-save");
       if (request.is('application/json')) {
         snapshot = (ref$ = request.body) != null ? ref$.snapshot : void 8;
         if (snapshot) {
@@ -658,7 +656,6 @@
     this.put({
       '/_/:room': function(){
         var room, this$ = this;
-        console.log("put /_/:room");
         this.response.type(Text);
         room = this.params.room;
         return requestToSave(this.request, function(snapshot){
@@ -682,7 +679,6 @@
     this.post({
       '/_/:room': function(){
         var room, this$ = this;
-        console.log("post /_/:room");
         room = this.params.room;
         return requestToCommand(this.request, function(command){
           if (!command) {
@@ -744,7 +740,6 @@
     this.post({
       '/_': function(){
         var this$ = this;
-        console.log("post /_/:room");
         return requestToSave(this.request, function(snapshot){
           var room, ref$;
           room = ((ref$ = this$.body) != null ? ref$.room : void 8) || newRoom();
@@ -840,7 +835,6 @@
       data: function(){
         var ref$, room, msg, user, ecell, cmdstr, type, auth, reply, broadcast, this$ = this;
         ref$ = this.data, room = ref$.room, msg = ref$.msg, user = ref$.user, ecell = ref$.ecell, cmdstr = ref$.cmdstr, type = ref$.type, auth = ref$.auth;
-        console.log("on data: ", (import$({}, this.data)));
         room = (room + "").replace(/^_+/, '');
         if (EXPIRE) {
           DB.expire("snapshot-" + room, EXPIRE);
