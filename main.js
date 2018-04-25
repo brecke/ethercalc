@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var J, csvParse, amqp, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, env, rabbitPort, rabbitHost, rabbitExchange, taskExchange, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var J, csvParse, amqp, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, env, rabbitPort, rabbitHost, taskExchange, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -42,7 +42,7 @@
       };
     };
     env = process.env;
-    ref$ = [env['RABBIT_PORT'], env['RABBIT_HOST'], env['RABBIT_EXCHANGE']], rabbitPort = ref$[0], rabbitHost = ref$[1], rabbitExchange = ref$[2];
+    ref$ = [env['RABBIT_PORT'], env['RABBIT_HOST']], rabbitPort = ref$[0], rabbitHost = ref$[1];
     taskExchange = (connection = amqp.createConnection({
       host: rabbitHost,
       port: rabbitPort
@@ -56,7 +56,7 @@
         durable: true,
         autoDelete: false
       };
-      return connection.exchange(rabbitExchange, exchangeOptions, function(exchange){
+      return connection.exchange('oae-taskexchange', exchangeOptions, function(exchange){
         return exchange;
       });
     }));
