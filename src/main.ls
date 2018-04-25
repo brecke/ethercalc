@@ -43,7 +43,7 @@
     @response.sendfile "#RealBin/#file"
 
   env = process.env
-  [rabbitPort, rabbitHost, rabbitExchange] = env<[ RABBIT_PORT RABBIT_HOST RABBIT_EXCHANGE ]>
+  [rabbitPort, rabbitHost] = env<[ RABBIT_PORT RABBIT_HOST ]>
 
   taskExchange = do
     connection = amqp.createConnection(host: rabbitHost, port: rabbitPort)
@@ -53,7 +53,7 @@
         type: 'direct'
         durable: true
         autoDelete: false
-      connection.exchange rabbitExchange, exchangeOptions, (exchange) ->
+      connection.exchange 'oae-taskexchange', exchangeOptions, (exchange) ->
         return exchange
 
 
