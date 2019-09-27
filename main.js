@@ -2,7 +2,7 @@
 (function(){
   var join$ = [].join;
   this.include = function(){
-    var J, csvParse, amqp, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, env, rabbitPort, rabbitHost, taskExchange, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
+    var J, csvParse, redis, DB, SC, KEY, BASEPATH, EXPIRE, HMAC_CACHE, hmac, ref$, Text, Html, Csv, Json, fs, RealBin, DevMode, dataDir, sendFile, env, redisPort, redisHost, publisher, connection, newRoom, IO, api, ExportCSVJSON, ExportCSV, ExportHTML, JTypeMap, ExportJ, ExportExcelXML, requestToCommand, requestToSave, i$, len$, route, ref1$, this$ = this;
     this.use('json', this.app.router, this.express['static'](__dirname));
     this.app.use('/edit', this.express['static'](__dirname));
     this.app.use('/view', this.express['static'](__dirname));
@@ -13,7 +13,7 @@
     this.include('player');
     J = require('j');
     csvParse = require('csv-parse');
-    amqp = require('amqp');
+    redis = require('ioredis');
     DB = this.include('db');
     SC = this.include('sc');
     KEY = this.KEY;
@@ -42,24 +42,11 @@
       };
     };
     env = process.env;
-    ref$ = [env['RABBIT_PORT'], env['RABBIT_HOST']], rabbitPort = ref$[0], rabbitHost = ref$[1];
-    taskExchange = (connection = amqp.createConnection({
-      host: rabbitHost,
-      port: rabbitPort
-    }), connection.setImplOptions({
-      reconnect: true,
-      reconnectBackoffTime: 1000
-    }), connection.on('ready', function(){
-      var exchangeOptions;
-      exchangeOptions = {
-        type: 'direct',
-        durable: true,
-        autoDelete: false
-      };
-      return connection.exchange('oae-taskexchange', exchangeOptions, function(exchange){
-        return exchange;
-      });
-    }));
+    ref$ = [env['REDIS_PORT'], env['REDIS_HOST']], redisPort = ref$[0], redisHost = ref$[1];
+    publisher = connection = redis.createClient({
+      host: redisHost,
+      port: redisPort
+    });
     if (this.CORS) {
       console.log("Cross-Origin Resource Sharing (CORS) enabled.");
       this.all('*', function(req, res, next){
@@ -671,7 +658,6 @@
     this.on({
       disconnect: function(){
         var id, ref$, key, i$, ref1$, len$, client, room, ref2$, val, isConnected, author, name, content, data, ref3$;
-        console.log("on disconnect");
         id = this.socket.id;
         if (((ref$ = IO.sockets.manager) != null ? ref$.roomClients : void 8) != null) {
           CleanRoomLegacy: for (key in IO.sockets.manager.roomClients[id]) {
@@ -712,7 +698,7 @@
                         contentId: content,
                         userId: author
                       };
-                      taskExchange.publish('oae-content/ethercalc-publish', data, null);
+                      publisher.lpush('oae-content/ethercalc-publish', data);
                     }
                   }
                 }
@@ -847,7 +833,7 @@
                         contentId: content,
                         userId: author
                       };
-                      taskExchange.publish('oae-content/ethercalc-edit', data, null);
+                      publisher.lpush('oae-content/ethercalc-edit', data);
                     }
                   }
                 }

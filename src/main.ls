@@ -11,7 +11,7 @@
 
   J = require \j
   csv-parse = require \csv-parse
-  amqp = require \amqp
+  redis = require \ioredis
 
   DB = @include \db
   SC = @include \sc
@@ -43,19 +43,10 @@
     @response.sendfile "#RealBin/#file"
 
   env = process.env
-  [rabbitPort, rabbitHost] = env<[ RABBIT_PORT RABBIT_HOST ]>
+  [redisPort, redisHost] = env<[ REDIS_PORT REDIS_HOST ]>
 
-  taskExchange = do
-    connection = amqp.createConnection(host: rabbitHost, port: rabbitPort)
-    connection.setImplOptions(reconnect: true, reconnectBackoffTime: 1000)
-    connection.on 'ready', ->
-      exchangeOptions =
-        type: 'direct'
-        durable: true
-        autoDelete: false
-      connection.exchange 'oae-taskexchange', exchangeOptions, (exchange) ->
-        return exchange
-
+  publisher = do
+    connection = redis.createClient(host: redisHost, port: redisPort)
 
   if @CORS
     console.log "Cross-Origin Resource Sharing (CORS) enabled."
@@ -487,7 +478,7 @@
             data =
               contentId: content
               userId: author
-            taskExchange.publish 'oae-content/ethercalc-publish', data, null
+            publisher.lpush 'oae-content/ethercalc-publish', data
 
       SC[room]?terminate!
       delete SC[room]
@@ -563,7 +554,7 @@
             data =
               contentId: content
               userId: author
-            taskExchange.publish 'oae-content/ethercalc-edit', data, null
+            publisher.lpush 'oae-content/ethercalc-edit', data
 
       SC[room]?ExecuteCommand cmdstr
       broadcast @data
