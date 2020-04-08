@@ -162,7 +162,8 @@
               var data;
               data = {
                 author: requestParams.author,
-                content: requestParams.content
+                content: requestParams.content,
+                room: SocialCalc._room
               };
               this.emit('author', data);
             }
