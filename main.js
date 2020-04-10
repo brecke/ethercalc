@@ -1102,30 +1102,30 @@
               }
             }
             room = key.substr(4);
-            if (room.indexOf('formdata') < 0) {
-              for (key in IO.sockets.adapter.rooms) {
-                if (/^author-/.exec(key)) {
-                  author = key.slice(7);
-                  for (name in IO.sockets.adapter.rooms) {
-                    if (/^content-/.exec(name)) {
-                      content = name.slice(8);
-                      data = {
-                        contentId: content,
-                        userId: author,
-                      };
-                      publisher.lpush(
-                        'oae-content/ethercalc-publish',
-                        JSON.stringify(data),
-                      );
-                    }
+
+            if (room.indexOf('formdata') < 0 && room === this.socket.sheetData.room) {
+              var data = {
+                contentId: this.socket.sheetData.content,
+                userId: this.socket.sheetData.author,
+              };
+
+              publisher.lpush(
+                'oae-content/ethercalc-publish',
+                JSON.stringify(data),
+                (err) => {
+                 if(!err) {
+                  if ((ref3$ = SC[room]) != null) {
+                    ref3$.terminate();
                   }
+                  delete SC[room];
                 }
-              }
+               });
+             } else {
+               if ((ref3$ = SC[room]) != null) {
+                 ref3$.terminate();
+               }
+               delete SC[room];
             }
-            if ((ref3$ = SC[room]) != null) {
-              ref3$.terminate();
-            }
-            delete SC[room];
           }
         }
       },
@@ -1133,9 +1133,11 @@
     this.on({
       author: function() {
         var ref$, author, content;
-        (ref$ = this.data), (author = ref$.author), (content = ref$.content);
+        (ref$ = this.data), (author = ref$.author), (content = ref$.content), (room = ref$.room);
         this.socket.join('author-' + author);
         this.socket.join('content-' + content);
+
+        this.socket.sheetData = this.data;
       },
     });
     return this.on({
